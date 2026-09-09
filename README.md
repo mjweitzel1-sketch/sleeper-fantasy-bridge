@@ -1,128 +1,109 @@
 # Sleeper Fantasy Bridge
 
-A planned fantasy football assistant for monitoring **The 40 year dash**, identifying dropped players and trending available players, and producing recommendations tailored to my exact roster.
+A read-only daily scouting report for **The 40 year dash** and **ItsFuckinBmore**.
 
-## Current Status
+## What works
 
-This repository currently contains only this README. Application code, installation steps, report generation, notifications, and scheduled workflows have not been implemented.
+- Fetches your exact roster by stable user ID, including bench and reserve players.
+- Reads completed waiver/free-agent transactions across season weeks and lists drops that remain unrostered.
+- Filters the top 100 global trending adds against every league roster, reserve, and taxi list.
+- Prioritizes watchlist players who match empty or unavailable starting slots, then sorts by global add count.
+- Generates a Markdown report with player names, injury metadata, scoring context, and the full roster.
+- Runs tests and generates a report when application code is pushed to main.
+- Schedules a daily report for **6:00 AM America/New_York**, including daylight saving time.
+- Supports optional SMTP email delivery; email is disabled until configured.
 
-## League and Team
+## Read your report on GitHub
 
-| Setting | Value |
+1. Open **Actions** in this repository.
+2. Select **Daily Sleeper report**.
+3. Open the latest successful run. The report appears in its summary.
+4. The report is also available as a downloadable artifact, retained for 30 days.
+
+For an immediate report, select **Run workflow** on the workflow page and run it on `main`.
+
+GitHub scheduled jobs can be delayed and are not a guarantee of exact 6:00 AM delivery. Public repositories may have scheduled workflows disabled after 60 days without repository activity. Check the Actions page if reports stop.
+
+## League configuration
+
+| Setting | Default |
 |---|---|
-| League name | The 40 year dash |
+| League | The 40 year dash |
 | League ID | `1388592505368363009` |
-| Season | 2026 |
 | Sleeper username | `ItsFuckinBmore` |
-| Sleeper user ID | `326127889974034432` |
-| Roster ID | `7` |
-| League size | 10 teams |
-| Scoring | Half-PPR |
-| Starting lineup | QB, 2 RB, 2 WR, TE, 2 FLEX, DEF |
-| Bench | 6 slots |
-| Reserve | 1 slot |
-| Desired report time | 6:00 AM America/New_York |
-| Notification destination | To be selected |
+| Stable user ID | `326127889974034432` |
+| Verified roster at setup | 7; resolved dynamically on each run |
+| Scoring at setup | Half-PPR; live settings shown in reports |
+| Report timezone | America/New_York |
 
-League settings and roster ownership should be verified from Sleeper on each run. The league ID should be reviewed when the league renews for a new season.
+Optional repository **Actions variables** `SLEEPER_LEAGUE_ID` and `SLEEPER_USER_ID` override these defaults. Update the league ID after annual renewal. The program rejects a league from a different NFL season and fails if it cannot identify exactly one matching roster.
 
-## Planned Features
+## Run locally
 
-### Dropped Player Monitoring
+Install Python 3.11 or newer. On Linux, the application uses only the Python standard library. On Windows, install timezone data first:
 
-- Retrieve completed league transactions.
-- Identify dropped players and when they were dropped.
-- Check whether each dropped player is still unrostered.
-- Distinguish waiver candidates from players available for immediate pickup.
-- Save transaction history to prevent duplicate reporting.
-- Handle week changes and recover transactions missed between runs.
-
-### Trending Available Players
-
-- Retrieve Sleeper’s trending player adds.
-- Exclude players already owned by any team in this league.
-- Account for bench, reserve, and taxi holdings where applicable.
-- Show trending activity alongside relevant player information.
-- Treat popularity as a signal, not proof that a player improves my roster.
-
-### Roster-Specific Recommendations
-
-- Resolve my team using my stable Sleeper user ID.
-- Read my current starters, bench, and reserve players.
-- Apply the league’s actual scoring and lineup settings.
-- Evaluate positional needs, injuries, bye weeks, and roster depth.
-- Explain why each suggested pickup could help.
-- Identify a corresponding drop candidate when a roster move requires one.
-- Clearly state uncertainty and the sources used for rankings or projections.
-- Recommend no move when no meaningful upgrade is supported.
-
-### Daily Report and Notifications
-
-Produce a report containing:
-
-1. Report time and data freshness.
-2. My roster summary and priority needs.
-3. Newly dropped players who remain unrostered.
-4. Trending players available in this league.
-5. Ranked pickup recommendations with reasoning.
-6. Suggested corresponding drops, where justified.
-7. Any missing data or collection failures.
-
-Target delivery is **6:00 AM America/New_York**, with daylight saving time handled automatically.
-
-The notification destination must be configured before delivery is enabled. Scheduled GitHub Actions runs may be delayed, so exact delivery at 6:00 AM is not guaranteed.
-
-## Data Sources
-
-The initial integration will use the [Sleeper API](https://docs.sleeper.com/).
-
-Relevant endpoints include:
-
-- User: `/v1/user/{username_or_user_id}`
-- League: `/v1/league/{league_id}`
-- Rosters: `/v1/league/{league_id}/rosters`
-- League users: `/v1/league/{league_id}/users`
-- Transactions: `/v1/league/{league_id}/transactions/{week}`
-- NFL state: `/v1/state/nfl`
-- Player information: `/v1/players/nfl`
-- Trending adds: `/v1/players/nfl/trending/add`
-
-Sleeper’s documented API is read-only and does not require an API token. This project will recommend moves; it will not submit waiver claims or modify a roster.
-
-Additional ranking, projection, injury, or bye-week sources may be needed for stronger recommendations. These sources have not yet been selected.
-
-## Planned Configuration
-
-The application should support the following configuration values. These are proposed settings, not currently implemented environment variables.
-
-```dotenv
-SLEEPER_LEAGUE_ID=1388592505368363009
-SLEEPER_USERNAME=ItsFuckinBmore
-SLEEPER_USER_ID=326127889974034432
-REPORT_TIMEZONE=America/New_York
-REPORT_TIME=06:00
+```sh
+python -m pip install tzdata
 ```
 
-Notification credentials must be stored in environment secrets or GitHub Actions secrets, never committed to this repository.
+From the repository directory:
 
-## Implementation Checklist
+```sh
+python -m unittest -v
+python bridge.py --preview
+python bridge.py
+```
 
-- [ ] Create the application and dependency configuration.
-- [ ] Connect to Sleeper and validate league and roster ownership.
-- [ ] Retrieve and cache player information.
-- [ ] Collect completed transactions and identify drops.
-- [ ] Persist processing history between runs.
-- [ ] Filter trending players against all league rosters.
-- [ ] Implement and document roster-specific ranking logic.
-- [ ] Generate a readable daily report.
-- [ ] Add a preview mode that does not send notifications.
-- [ ] Configure a notification destination and delivery credentials.
-- [ ] Add a timezone-aware daily workflow and manual run option.
-- [ ] Prevent duplicate notifications on retries.
-- [ ] Add failure handling and alerts.
-- [ ] Test ownership filtering, duplicate transactions, week boundaries, and missing data.
-- [ ] Document installation, configuration, and execution commands.
+The preview writes `reports/latest.md` without advancing the report checkpoint. A normal run writes the report and updates `data/state.json`. Both modes may refresh the player metadata cache. Local configuration uses environment variables; `.env` files are not loaded automatically.
 
-## Setup
+## Enable email delivery (optional)
 
-Setup instructions will be added when the application exists. Editing this README does not activate monitoring or schedule notifications.
+Use an SMTP provider that supports STARTTLS on port 587. Add these repository **Actions secrets** under **Settings → Secrets and variables → Actions**:
+
+- `SMTP_HOST`
+- `SMTP_USERNAME`
+- `SMTP_PASSWORD` (use the provider's app password where required)
+- `EMAIL_FROM`
+- `EMAIL_TO`
+
+Then add the Actions **variable** `ENABLE_EMAIL` with value `true`. This enables email for scheduled and manually requested runs. Code pushes generate reports without emailing them. Run the workflow manually to test delivery once you have configured your own destination.
+
+Never put passwords in the README or source files. No email is sent by default. For local delivery, export the same secrets as environment variables and run `python notify.py` after generating a report. Local SMTP port can be overridden with `SMTP_PORT`.
+
+## State and reliability
+
+Sleeper reads retry temporary failures three times. A required API failure stops the report instead of presenting partial results as complete. GitHub marks failed workflow runs visibly; enable GitHub Actions failure notifications in your own account settings if desired.
+
+The first run reports drops from the previous 24 hours. Later runs report drops since the last successful saved report checkpoint. All weeks from 0 through the current week (up to 18) are queried so week boundaries and missed days can be recovered. Trades and failed/pending transactions are excluded. Repeat transaction IDs are deduplicated within each report, and players reclaimed by another team are excluded.
+
+GitHub Actions caches retain checkpoints, the email ledger, and player metadata between runs. **Caches can be evicted**: if state is lost, the next report falls back to 24 hours and may repeat previously reported activity. A durable database is a future improvement. Player metadata is refreshed at most once per 24 hours.
+
+Email delivery is skipped if the ledger already records that league/report date/recipient. A crash after the SMTP server accepts a message but before the ledger is saved can still cause a duplicate; SMTP does not provide guaranteed exactly-once delivery. A failed email step prevents saving the new checkpoint so a retry can recover the report window.
+
+## Recommendation limits
+
+The watchlist is an explainable scouting heuristic, **not a projection-based add/drop engine**. League scoring is displayed but is not yet used to calculate projected fantasy points. No bye-week feed, current news feed, or projection source is configured. Injury metadata can be up to 24 hours old.
+
+The report intentionally does not claim that a trending player is better than someone on your bench and does not recommend a specific drop without supporting evidence. Add a validated ranking/projection source before using this as an upgrade model.
+
+Unrostered means absent from roster, reserve, and taxi holdings. It does not prove a player can be added immediately: check waiver locks, budgets, eligibility, and claim deadlines in Sleeper. This application never submits claims or changes rosters.
+
+## Files
+
+- `bridge.py`: Sleeper data collection, filtering, and report generation.
+- `notify.py`: optional SMTP email delivery and duplicate suppression.
+- `test_bridge.py`, `test_notify.py`, `test_integration.py`: offline tests with no notifications sent.
+- `.github/workflows/daily-report.yml`: tests, report generation, daily schedule, artifacts, and optional email.
+
+## Next improvements
+
+- Add current projections and bye-week data for scoring-aware add/drop comparisons.
+- Add durable storage for stronger recovery and delivery tracking.
+- Add alternate notification channels if needed.
+
+## Sources
+
+- [Sleeper API documentation](https://docs.sleeper.com/)
+- [GitHub scheduled workflow documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+
+Sleeper's documented API is read-only and does not require an API token.
