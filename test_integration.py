@@ -23,13 +23,13 @@ class ReportIntegrationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             try:
                 os.chdir(temp)
-                with patch('bridge.get', side_effect=fake_get), patch.dict(os.environ, {'REPORT_TIMEZONE': 'UTC'}), patch('sys.argv', ['bridge.py', '--preview']):
+                with patch('recommendations.read_url', side_effect=OSError('offline fixture')), patch('bridge.get', side_effect=fake_get), patch.dict(os.environ, {'REPORT_TIMEZONE': 'UTC'}), patch('sys.argv', ['bridge.py', '--preview']):
                     bridge.main()
                 self.assertFalse(Path('data/state.json').exists())
                 self.assertIn('Available Player', Path('reports/latest.md').read_text())
                 self.assertIn('/league/1388592505368363009/transactions/0', calls)
                 self.assertIn('/league/1388592505368363009/transactions/1', calls)
-                with patch('bridge.get', side_effect=fake_get), patch.dict(os.environ, {'REPORT_TIMEZONE': 'UTC'}), patch('sys.argv', ['bridge.py']):
+                with patch('recommendations.read_url', side_effect=OSError('offline fixture')), patch('bridge.get', side_effect=fake_get), patch.dict(os.environ, {'REPORT_TIMEZONE': 'UTC'}), patch('sys.argv', ['bridge.py']):
                     bridge.main()
                 before = Path('data/state.json').read_text()
                 with patch('bridge.get', side_effect=RuntimeError('API unavailable')), patch.dict(os.environ, {'REPORT_TIMEZONE': 'UTC'}), patch('sys.argv', ['bridge.py']):

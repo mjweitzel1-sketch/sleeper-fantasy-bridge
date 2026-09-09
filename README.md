@@ -80,24 +80,33 @@ GitHub Actions caches retain checkpoints, the email ledger, and player metadata 
 
 Email delivery is skipped if the ledger already records that league/report date/recipient. A crash after the SMTP server accepts a message but before the ledger is saved can still cause a duplicate; SMTP does not provide guaranteed exactly-once delivery. A failed email step prevents saving the new checkpoint so a retry can recover the report window.
 
+## Free projection-based recommendations
+
+The report now attempts to load free weekly and season projections from Sleeper's undocumented projection endpoint, plus the nflverse NFL schedule. No API key or paid subscription is required. These are optional data dependencies: missing data, invalid weeks, unsupported scoring, or network errors leave the original scouting report available with an explicit explanation.
+
+The new section compares the best legal offensive lineup before and after one move, including FLEX eligibility. It uses the league's supported offensive scoring settings, not a generic PPR total. It considers projected unrostered QB/RB/WR/TE players, including those outside the trending list.
+
+A swap requires at least 2 projected lineup points gained, 3 individual weekly points gained, and an incoming season projection at least 5% higher than the drop candidate. These are conservative heuristics, not calibrated confidence intervals. Season totals are not rest-of-season rankings. Current starters, injured players, reserve/taxi holdings, bye-week drop candidates, and players whose games have started are protected. Same-position swaps preserve positional counts. Optional local environment variable `PROTECTED_PLAYER_IDS` accepts comma-separated Sleeper IDs; exposing this through Actions would require adding it to the workflow environment.
+
+The schedule supplies bye weeks and kickoff checks. Player injury metadata still comes from the existing daily cache, and there is no verified news feed. Each suggested move is an alternative evaluated against the original roster, not an instruction to execute all moves. Existing email settings and the daily workflow do not change.
+
 ## Recommendation limits
 
-The watchlist is an explainable scouting heuristic, **not a projection-based add/drop engine**. League scoring is displayed but is not yet used to calculate projected fantasy points. No bye-week feed, current news feed, or projection source is configured. Injury metadata can be up to 24 hours old.
-
-The report intentionally does not claim that a trending player is better than someone on your bench and does not recommend a specific drop without supporting evidence. Add a validated ranking/projection source before using this as an upgrade model.
+The trending watchlist remains a scouting heuristic. The projection section adds quantitative comparisons when its free feeds are usable. Provider publication freshness is not guaranteed, and no claim timing or FAAB bid is calculated. Defense and kicker swaps are excluded. Verify current player news before acting. A report that says comparisons are unavailable has not validated any advanced move.
 
 Unrostered means absent from roster, reserve, and taxi holdings. It does not prove a player can be added immediately: check waiver locks, budgets, eligibility, and claim deadlines in Sleeper. This application never submits claims or changes rosters.
 
 ## Files
 
 - `bridge.py`: Sleeper data collection, filtering, and report generation.
+- `recommendations.py`, `test_recommendations.py`: free projection comparisons and regression tests.
 - `notify.py`: optional SMTP email delivery and duplicate suppression.
 - `test_bridge.py`, `test_notify.py`, `test_integration.py`: offline tests with no notifications sent.
 - `.github/workflows/daily-report.yml`: tests, report generation, daily schedule, artifacts, and optional email.
 
 ## Next improvements
 
-- Add current projections and bye-week data for scoring-aware add/drop comparisons.
+- Improve long-term rankings and add verified player news; calibrate move thresholds.
 - Add durable storage for stronger recovery and delivery tracking.
 - Add alternate notification channels if needed.
 

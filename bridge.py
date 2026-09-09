@@ -100,7 +100,7 @@ def scouting(trending, owned, roster, players, slots):
     return sorted(candidates.values(), key=lambda r: (-int(r['gap']), -int(r.get('count', 0)), r['player_id']))
 
 
-def render(league, roster, players, drops, candidates, now, since_ms):
+def render(league, roster, players, drops, candidates, now, since_ms, advanced=""):
     lines = [f"# {clean(league['name'])}: daily Sleeper report", '',
              f"Generated: {now.isoformat(timespec='seconds')}",
              f"Season: {league['season']} | Roster: {roster['roster_id']} | Reception points: {league.get('scoring_settings', {}).get('rec', 0)}", '',
@@ -133,7 +133,9 @@ def render(league, roster, players, drops, candidates, now, since_ms):
               '- No projections, bye-week feed, or verified news source is configured. No specific drop is recommended without evidence of an upgrade.',
               '- Player metadata is cached for up to 24 hours; roster, transaction, and trend data are fetched for this report.',
               '- Read-only: no claims or roster changes are submitted.', '', '[Source: Sleeper API](https://docs.sleeper.com/)', '']
-    return '\n'.join(lines)
+    if advanced:
+        lines = [line for line in lines if not line.startswith('- No projections,')]
+    return '\n'.join(lines) + advanced
 
 
 def main():
@@ -174,7 +176,9 @@ def main():
     trending = get('/players/nfl/trending/add?lookback_hours=24&limit=100')
     drops = drops_since(transactions, since_ms, owned)
     candidates = scouting(trending, owned, roster, players, league['roster_positions'])
-    report = render(league, roster, players, drops, candidates, now, since_ms)
+    from recommendations import recommendation_section
+    advanced = recommendation_section(league, roster, owned, players, nfl, now)
+    report = render(league, roster, players, drops, candidates, now, since_ms, advanced)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(report, encoding='utf-8')
