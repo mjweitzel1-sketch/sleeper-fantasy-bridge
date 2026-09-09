@@ -1,0 +1,59 @@
+name: Daily Sleeper report
+on:
+  schedule:
+    - cron: '0 6 * * *'
+      timezone: America/New_York
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['bridge.py', 'test_bridge.py', 'notify.py', 'test_notify.py', 'test_integration.py', '.github/workflows/daily-report.yml']
+permissions:
+  contents: read
+concurrency:
+  group: sleeper-daily-report
+  cancel-in-progress: false
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run tests
+        run: python -m unittest -v
+      - name: Restore report checkpoint and player cache
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: sleeper-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: sleeper-v1-
+      - name: Generate report
+        env:
+          SLEEPER_LEAGUE_ID: ${{ vars.SLEEPER_LEAGUE_ID || '1388592505368363009' }}
+          SLEEPER_USER_ID: ${{ vars.SLEEPER_USER_ID || '326127889974034432' }}
+          REPORT_TIMEZONE: America/New_York
+        run: python bridge.py
+      - name: Show report in run summary
+        run: cat reports/latest.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Save report download
+        uses: actions/upload-artifact@v4
+        with:
+          name: sleeper-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: reports/latest.md
+          retention-days: 30
+      - name: Email report when enabled
+        if: vars.ENABLE_EMAIL == 'true' && github.event_name != 'push'
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: python notify.py
+      - name: Save checkpoint
+        uses: actions/cache/save@v4
+        with:
+          path: data
+          key: sleeper-v1-${{ github.run_id }}-${{ github.run_attempt }}
