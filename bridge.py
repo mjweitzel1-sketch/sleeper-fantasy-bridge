@@ -182,6 +182,8 @@ def main():
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(report, encoding='utf-8')
+    from report_formats import export_report
+    export_report(output)
     if not args.preview:
         write_json(state_path, {'identity': identity, 'last_report_ms': int(now.timestamp() * 1000)})
     print(f'Report saved to {output}; {len(drops)} drops and {len(candidates)} watchlist candidates.')

@@ -19,5 +19,11 @@ class NotificationTests(unittest.TestCase):
             self.assertFalse(ledger.exists())
             smtp.return_value.__enter__.return_value.send_message.side_effect = None
             deliver(report, ledger)
+            message = smtp.return_value.__enter__.return_value.send_message.call_args.args[0]
+            self.assertIsNotNone(message.get_body(preferencelist=('html',)))
+            attachment = list(message.iter_attachments())[0]
+            self.assertEqual(attachment.get_content_type(), 'application/pdf')
+            self.assertEqual(attachment.get_filename(), 'sleeper-report-2026-09-09.pdf')
+            self.assertTrue(attachment.get_payload(decode=True).startswith(b'%PDF-'))
             deliver(report, ledger)
             self.assertEqual(smtp.return_value.__enter__.return_value.send_message.call_count, 2)

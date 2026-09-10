@@ -27,7 +27,12 @@ def deliver(report_path='reports/latest.md', ledger_path='data/delivery.json'):
     message['From'] = os.environ['EMAIL_FROM']
     message['To'] = os.environ['EMAIL_TO']
     message['Message-ID'] = f'<{key}@sleeper-fantasy-bridge.local>'
+    from report_formats import email_html, pdf_bytes
     message.set_content(report)
+    message.add_alternative(email_html(report), subtype='html')
+    date = generated[11:21]
+    message.add_attachment(pdf_bytes(report), maintype='application', subtype='pdf',
+                           filename=f'sleeper-report-{date}.pdf')
     with smtplib.SMTP(os.environ['SMTP_HOST'], int(os.getenv('SMTP_PORT', '587')), timeout=30) as smtp:
         smtp.starttls(context=ssl.create_default_context())
         smtp.login(os.environ['SMTP_USERNAME'], os.environ['SMTP_PASSWORD'])

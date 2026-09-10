@@ -13,6 +13,12 @@ A read-only daily scouting report for **The 40 year dash** and **ItsFuckinBmore*
 - Schedules a daily report for **6:00 AM America/New_York**, including daylight saving time.
 - Supports optional SMTP email delivery; email is disabled until configured.
 
+## Gmail and PDF reports
+
+Daily emails now include a formatted HTML version with a clear recommendation at the top, a readable roster table, and a dated PDF attachment. Plain-text email remains available for clients that need it. Each GitHub report artifact contains Markdown, HTML, and PDF versions. The existing email credentials, daily schedule, and duplicate-send protection are retained.
+
+For local use, install the PDF renderer first: `python -m pip install reportlab==4.4.9`. GitHub Actions installs it automatically. The PDF and email use the same report data; presentation changes do not change recommendation thresholds.
+
 ## Read your report on GitHub
 
 1. Open **Actions** in this repository.
@@ -40,7 +46,7 @@ Optional repository **Actions variables** `SLEEPER_LEAGUE_ID` and `SLEEPER_USER_
 
 ## Run locally
 
-Install Python 3.11 or newer. On Linux, the application uses only the Python standard library. On Windows, install timezone data first:
+Install Python 3.11 or newer. The presentation layer requires ReportLab (installation command above). On Windows, install timezone data first:
 
 ```sh
 python -m pip install tzdata
